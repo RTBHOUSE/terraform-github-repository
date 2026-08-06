@@ -462,6 +462,11 @@ variable "rulesets" {
         require_last_push_approval        = optional(bool, false)
         required_approving_review_count   = optional(number, 0)
         required_review_thread_resolution = optional(bool, false)
+        required_reviewers = optional(list(object({
+          team              = string
+          file_patterns     = list(string)
+          minimum_approvals = number
+        })), [])
       }), null),
       required_deployments = optional(object({
         required_deployment_environments = optional(list(string), [])
