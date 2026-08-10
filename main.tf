@@ -411,8 +411,10 @@ locals {
     local.custom_repository_roles_map,
   )
   ruleset_rules_teams = flatten([
-    for e, c in local.rulesets :
-    c.bypass_actors != null ? compact([for b in c.bypass_actors : b.actor_type == "Team" ? b.actor_id : null]) : []
+    for e, c in local.rulesets : concat(
+      c.bypass_actors != null ? compact([for b in c.bypass_actors : b.actor_type == "Team" ? b.actor_id : null]) : [],
+      [for required_reviewer in try(c.rules.pull_request.required_reviewers, []) : required_reviewer.team]
+    )
   ])
 
   ruleset_conditions_refs_prefix = {
@@ -541,6 +543,18 @@ resource "github_repository_ruleset" "default" {
           require_last_push_approval        = pull_request.value.require_last_push_approval
           required_approving_review_count   = pull_request.value.required_approving_review_count
           required_review_thread_resolution = pull_request.value.required_review_thread_resolution
+
+          dynamic "required_reviewers" {
+            for_each = pull_request.value.required_reviewers
+            content {
+              minimum_approvals = required_reviewers.value.minimum_approvals
+              file_patterns     = required_reviewers.value.file_patterns
+              reviewer {
+                id   = data.github_team.ruleset_rules_teams[required_reviewers.value.team].id
+                type = "Team"
+              }
+            }
+          }
         }
       }
 
